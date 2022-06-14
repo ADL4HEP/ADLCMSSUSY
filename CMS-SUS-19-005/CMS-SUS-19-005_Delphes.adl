@@ -1,0 +1,290 @@
+info analysis
+  title "Searches for physics beyond the standard model with the MT2 variable in hadronic final states with and without disappearing tracks in proton-proton collisions at s√= 13 TeV"
+  experiment CMS
+  id SUS-19-005
+  publication Eur. Phys. J. C 80 (2020) 3
+  sqrtS 13.0
+  lumi 137
+  arXiv 1909.03460
+  hepdata
+  doi 10.1140/epjc/s10052-019-7493-x
+
+info adl
+  adlauthor Sezen Sekmen
+  datatier Delphes
+  
+# OBJECT SELECTION
+
+object vertices
+  take vertex
+  select ndof > 4
+  select abs(dz) < 24 # cm
+  select rho < 2 # cm
+
+object sortedvertices
+  take sort(vertices, sumpT, desc)
+
+object jets
+  take AK4jets
+  select pT > 30
+  select abs(Eta) < 2.4
+  select is2016 ? looseID == 1 : tightID == 1 # it was like ID > 0 (2016) ID > 1 (17, 18)
+
+object jetsfordphi
+  take AK4jets
+  select pT > 30
+  select abs(Eta) < 4.7
+  select is2016 ? looseID == 1 : tightID == 1
+  
+object monojet
+  take jets
+  select tightID == 1 # probably ID > 1
+  select chargedhadronfraction > 0.05
+  select neutralhadronfraction < 0.8
+  select neutralEMfraction < 0.7
+
+object jetstoreject # only for fullsim or data
+  take jets
+  select pT > 30
+  select abs(Eta) < 4.7
+  select jetID == 0 # no loose / tight ID
+
+object jetstocleanforfastsim
+  take jets j
+  select pT > 20
+  select abs(Eta) < 2.5
+  select chargedhadronfraction < 0.1
+  select dR(j, genjets) >= 0.3
+
+object bjets
+  take AK4jets
+  select pT > 20
+  select abs(Eta) < 2.4
+  select DeepCSV > 0.6324, 0.4941 # 2016, 2017+18. Eff = 55-70 for pT=20-400
+
+object vetoelectrons
+  take electron
+  select pT > 10
+  select abs(Eta) < 2.4
+  select IDPOGveto == 1
+  select miniisopTsum / pT < 0.1
+
+object vetoelectrontrack
+  take track
+  select pT > 5
+  select abs(Eta) < 2.4
+  select abs(d0) < 0.2
+  select abs(dz) < 0.1
+  select MT(track, MET) < 100
+  define isopTsum = sum(all charged PF candidates within dR < 0.3, wich |dz| < 0.1)
+  select isopTsum / pT < 0.2
+
+object vetomuons
+  take muon
+  select pT > 10
+  select abs(Eta) < 2.4
+  select POGloose == 1 #
+  select isPFMuon and (isGlobalMuon or isTrackerMuon) # this is probably the POGloose
+  select abs(d0) < 0.2
+  select abs(dz) < 0.5
+  select miniisopTsum / pT < 0.2
+
+object vetomuontrack
+  take track
+  select pT > 5
+  select abs(Eta) < 2.4
+  select abs(d0) < 0.2
+  select abs(dz) < 0.1
+  select MT(track, MET) < 100
+  define isopTsum = sum(all charged PF candidates within dR < 0.3, wich |dz| < 0.1)
+  select isopTsum / pT < 0.2
+
+object vetoisotrack
+  take track
+  select pT > 10
+  select abs(Eta) < 2.4
+  select abs(d0) < 0.2
+  select abs(dz) < 0.1
+  select MT(track, MET) < 100
+  define isopTsum = sum(all charged PF candidates within dR < 0.3, wich |dz| < 0.1)
+  select isopTsum / pT < 0.1
+
+object pseudojets
+  take fpseudojets(AK4jets)
+# Might have been taken from here:
+# https://github.com/cms-sw/cmssw/blob/master/PhysicsTools/Heppy/src/Hemisphere.cc
+
+
+# EVENT VARIABLES
+
+define MHT = sum(jets)
+define MT2 = fMT2(pseudojets[0], pseudojets[1], MET)
+
+# EVENT SELECTION
+
+# Inclusive search
+region presel
+  select size(jets) > 0
+  select HT > 250
+  select HT < 1200 or size(jets) == 1 ? MET > 250 : MET > 30
+  select size(jetsfordphi) >= 4 ? min(dphi(MET, jetsfordphi[0:3)) > 0.3 : min(dphi(MET,
+jetsfordphi[0:size(jets))) > 0.3
+  select pT(MET - MHT) / MET < 0.5
+
+# Inclusive analysis, super signal regions (Table 6)  
+
+region 2jloose
+  select presel
+  select size(njets) >= 2
+  select HT > 1200
+  select MT2 > 1200
+
+region 2jtight
+  select presel
+  select size(njets) >= 2
+  select HT > 1500
+  select MT2 > 1400
+
+region 4jloose
+  select presel
+  select size(njets) >= 4
+  select HT > 1200
+  select MT2 > 1000
+
+region 4jtight
+  select presel
+  select size(njets) >= 4
+  select HT > 1500
+  select MT2 > 1400
+
+region 7jloose
+  select presel
+  select size(njets) >= 7
+  select HT > 1200
+  select MT2 > 600
+
+region 7jtight
+  select presel
+  select size(njets) >= 7
+  select HT > 1500
+  select MT2 > 800
+
+region 10jloose
+  select presel
+  select size(njets) >= 2
+  select HT > 1200
+  select MT2 > 400
+
+region 10jtight
+  select presel
+  select size(njets) >= 2
+  select HT > 1500
+  select MT2 > 600
+
+region 2bloose
+  select presel
+  select size(njets) >= 2
+  select size(bnjets) >= 2
+  select HT > 1200
+  select MT2 > 600
+
+region 2btight
+  select presel
+  select size(njets) >= 2
+  select size(bnjets) >= 2
+  select HT > 1500
+  select MT2 > 600
+
+region 3bloose
+  select presel
+  select size(njets) >= 2
+  select size(bnjets) >= 3
+  select HT > 1200
+  select MT2 > 400
+
+region 3btight
+  select presel
+  select size(njets) >= 2
+  select size(bnjets) >= 3
+  select HT > 1500
+  select MT2 > 400
+
+region 4bloose
+  select presel
+  select size(njets) >= 2
+  select size(bnjets) >= 4
+  select HT > 1200
+  select MT2 > 400
+
+region 4btight
+  select presel
+  select size(njets) >= 2
+  select size(bnjets) >= 4
+  select HT > 1500
+  select MT2 > 400
+
+region 7j3bloose
+  select presel
+  select size(njets) >= 7
+  select size(bnjets) >= 3
+  select HT > 1200
+  select MT2 > 400
+
+region 7j3btight
+  select presel
+  select size(njets) >= 7
+  select size(bnjets) >= 3
+  select HT > 1500
+  select MT2 > 400
+
+region 7j4bloose
+  select presel
+  select size(njets) >= 7
+  select size(bnjets) >= 4
+  select HT > 1200
+  select MT2 > 400
+
+region 7j4btight
+  select presel
+  select size(njets) >= 7
+  select size(bnjets) >= 4
+  select HT > 1500
+  select MT2 > 400
+
+region 10j4bloose
+  select presel
+  select size(njets) >= 10
+  select size(bnjets) >= 4
+  select HT > 1200
+  select MT2 > 400
+
+region 10j4btight
+  select presel
+  select size(njets) >= 10
+  select size(bnjets) >= 4
+  select HT > 1200
+  select MT2 > 400
+
+region 2btight
+  select presel
+  select size(njets) [] 1 3
+  select size(bnjets) == 0
+  select HT [] 250 400
+  select size(njets) >= 2 ? MT2 [] 200 300 
+
+
+# Disappearing track search
+region preselDT
+  select presel
+  select size(DT) >= 1
+
+
+
+
+
+
+
+
+
+
+

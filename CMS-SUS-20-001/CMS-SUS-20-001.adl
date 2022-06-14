@@ -1,0 +1,205 @@
+#info analysis
+#  title "Search for supersymmetry in final states with two oppositely charged same-flavor leptons and missing transverse momentum in proton-proton collisions at sqrts = 13 TeV"
+#  experiment CMS
+#  id SUS-20-001
+#  publication JHEP 04 (2021) 123
+#  sqrtS 13.0
+#  lumi 137
+#  arXiv 2012.08600 
+#  hepdata --
+#  doi 10.1007/JHEP04(2021)123
+
+info adl
+  author S. Sekmen
+  datatier MiniAODv3 / NanoAOD
+
+# OBJECT SELECTION
+
+object electrons
+  take Electron
+  select abs(eta) < 2.4
+
+object muons
+  take Muon
+  select abs(eta) < 2.4
+
+object leptons 
+  take union(electrons, muons)
+
+object ak4jets 
+  take AK4jet
+  select pT > 35
+  select abs(Eta) < 2.4
+
+object bjets 
+  take Jet
+  select pT > 25  
+  #select abs(Eta(Jet)) < 2.4
+
+object bjets50
+  take Jet
+  select pT > 50
+
+object Vs
+  take AK8jets
+  select pT > 200
+  select abs(eta) < ...
+  select Vtagging ...
+
+object dilepton = leptons[0] + leptons[1]
+# do we explicitly want to write the nlep >= 2 requirement?  If so, how?
+
+# EVENT VARIABLES
+define mll = m(dilepton)
+define HT = sum(pt(jets))
+define MT2ll = fMT2(leptons[0], leptons[1], METLV)
+define summlb = sum(m(leptons + bjets)) # syntax: check paper p9
+
+# EVENT SELECTION
+
+region baseline
+  select size(leptons) == 2
+  select q(leptons[0]) + q(leptons[1]) == 0
+  select pT(leptons[0]) > 25
+  select pT(leptons[0]) > 20
+  # select lepton flavors consistent with triggers
+  select dR(leptons[0], leptons[1]) > 0.1
+  select m(dilepton) > 20
+  select pT(dilepton) > 50
+  select MET > 50
+  
+region StrOnZ
+  baseline
+  select mll [] 86 96
+  reject size(otherleptons) > 0 # check section 3 for lepton defs
+
+region StrOnZSRAbveto
+  StrOnZ
+  select n(jets) [] 2 3
+  select n(njets) == 0
+  select HT > 500
+  select MT2ll > 80
+  bins MET 100 150 230 300
+
+# Strong production on-Z search regions
+region StrOnZSRBbveto
+  type search
+  StrOnZ
+  select n(jets) [] 4 5
+  select n(njets) == 0
+  select HT > 500
+  select MT2ll > 80
+  bins MET 100 150 230 300
+
+region StrOnZSRCbveto
+  type search
+  StrOnZ
+  select n(jets) > 5
+  select n(njets) == 0
+  select MT2ll > 80
+  bins MET 100 150 250
+
+region StrOnZSRAbtag
+  type search
+  StrOnZ
+  select n(jets) [] 2 3
+  select n(njets) > 0
+  select HT > 200
+  select MT2ll > 100
+  bins MET 100 150 230 300
+
+region StrOnZSRBbtag
+  type search
+  StrOnZ
+  select n(jets) [] 4 5
+  select n(njets) > 0
+  select HT > 200
+  select MT2ll > 100
+  bins MET 100 150 230 300
+
+region StrOnZSRCbtag
+  type search
+  StrOnZ
+  select n(jets) > 5
+  select n(njets) > 0
+  select MT2ll > 100
+  bins MET 100 150 250
+
+# EW production on-Z search regions
+region EWOnZ
+  baseline
+  select mll [] 86 96
+
+region EWOnZboostedVZ
+  type search
+  EWOnZ
+  select n(jets) < 2
+  select n(V) > 0
+  select n(bjets) == 0
+  bins MET 100 200 300 400 500 inf
+
+region EWOnZresolvedVZ
+  type search
+  EWOnZ
+  select n(jets) >= 2
+  select n(bjets) == 0
+  find? optimize? dphi(jets[-1], jets[-2]) ~= 0 # needsyntax
+  select m(jets[-1] + jets[-2]) < 110
+  select MT2ll > 80
+  bins MET 100 150 250 350 inf
+
+region EWOnZHZ
+  type search
+  EWOnZ
+  select n(jets) > 1
+  select MT2lblb > 200 
+  bins MET 100 150 250 inf 
+
+# edge
+region edge
+  baseline
+  select mll [] 20 86 or mll > 96
+  select n(jets) > 1
+  select MT2ll > 80
+
+region edgefit
+  type search
+  edge
+  select MET > 200 
+  select mll > 20
+
+region edgebveto
+  type search
+  edge
+  select n(bjets) == 0
+  select MET > 150
+  bins mll 20 60 86 96 150 200 300 400 inf # syntax: ... 60 86 + 96 150 200 ...
+#  llhd(MET, pT(dilepton), dphi(leptons[0], leptons[1]), summlb)
+
+region edgebtag
+  type search
+  edge
+  select n(bjets) > 0
+  select MET > 150
+  bins mll 20 60 86 96 150 200 300 400 inf 
+#  llhd(MET, pT(dilepton), dphi(leptons[0], leptons[1]), summlb)
+
+# slepton
+region slepton
+  baseline
+  select mll [] 20 65 or mll > 120
+  select MT2ll > 100
+  select n(bjets50) == 0
+
+region sleptonjetless
+  type search
+  slepton
+  select n(jets) == 0
+  bins MET 100 150 225 300 inf
+
+region sleptonwithjets
+  type search
+  slepton
+  select n(jets) > 0
+  select pT(leptons[1]) / pT(jets[0]) > 1.2
+  bins MET 100 150 225 300 inf

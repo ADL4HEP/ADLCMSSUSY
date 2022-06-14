@@ -1,0 +1,178 @@
+info analysis
+  title "Search for higgsinos decaying to two Higgs bosons and missing transverse momentum in proton-proton collisions at sqrts = 13 TeV"
+  experiment CMS
+  id SUS-20-004
+  publication ...
+  sqrtS 13.0
+  lumi 137
+  arXiv 2201.04206
+  hepdata https://www.hepdata.net/record/ins2009652
+  doi ...
+
+info adl
+  author S. Sekmen
+  datatier NanoAODv7
+  status draft
+
+# OBJECT SELECTION
+
+object ak4jets 
+  take AK4jet
+  select pT > 30
+  select abs(Eta) < 2.4
+  reject dR(AK4jet, leptons) < 0.4 and abs(pT(leptons) - pT(AK4jet)) / pT(leptons) < 1.0
+
+object bjets
+  take ak4jets
+#  select DeepCSVM > 0.6321, 0.4941, 0.4184 -- from SUS-21-002
+  select pfDeepCSVJetTags:probb == 1 or pfDeepCSVJetTags:probbb == 1
+
+object bjetsloose
+  take ak4jets
+
+object bjetsmedium
+  take ak4jets
+
+object bjetstight
+  take ak4jets
+
+
+object ak8jets 
+  take AK8jet
+  select pT > 300
+  select abs(Eta) < 2.4
+  select m [] 60 260
+
+object ak8doublebjets
+  take ak8jets
+  select pfMassIndependentDeepDoubleBvLJetTags:probHbb == 1
+
+object vetoelectrons
+  take Electron
+  select pT > 10
+  select abs(eta) < 2.5
+  select Fall17v2CutBasedvetoID == 1
+  select miniPFRelIso_all < 0.1
+  select abs(eta) in barrel ? abs(dxy) <= 0.05 : abs(dxy) <= 0.10
+  select abs(eta) in barrel ? dz <= 0.10 : dz <= 0.20
+
+object vetomuons
+  take Muon
+  select pT > 10
+  select abs(eta) < 2.4
+  select cutbasedmediumID == 1
+  select miniPFRelIso_all < 0.2
+  select abs(dxy) <= 0.2
+  select dz <= 0.5
+
+object vetoleptons = union(vetoelectrons, vetomuons)
+
+object controlelectrons
+  take Electron
+  select pT > 20
+  select abs(eta) < 2.5
+  select Fall17v2CutBasedvetoID == 1
+  select miniPFRelIso_all < 0.1
+  select abs(eta) in barrel ? abs(dxy) <= 0.05 : abs(dxy) <= 0.10
+  select abs(eta) in barrel ? dz <= 0.10 : dz <= 0.20
+
+object controlmuons
+  take Muon
+  select pT > 20
+  select abs(eta) < 2.4
+  select cutbasedmediumID == 1
+  select miniPFRelIso_all < 0.2
+  select abs(dxy) <= 0.2
+  select dz <= 0.5
+
+object controlleptons = union(controlelectrons, controlmuons)
+
+object isolatedtrackslep
+  take PFCandidates
+  select dz(track, PV) - dz(track, vertices) < 0
+  select abs(pdgID) == 11 or abs(pdgID) == 13 
+  select abs(eta) < 2.5
+  select pT > 5
+  select (pT < 25 and PFAbsIso_chg < 5) or PFRelIso.chg < 0.2)   
+  select abs(dxy) < 0.2
+  select abs(dz_ < 0.1
+  select MT(Track, METLV) < 100
+
+object isolatedtrackshad
+  take PFCandidates
+  select dz(track, PV) - dz(track, vertices) < 0
+  select abs(pdgID) == 211 
+  select abs(eta) < 2.5
+  select pT > 10
+  select (pT < 25 and PFAbsIso_chg < 5) or PFRelIso.chg < 0.1)   
+  select abs(dxy) < 0.2
+  select abs(dz_ < 0.1
+  select MT(Track, METLV) < 100
+
+object isolatedtracks
+  take uniton(isolatedtrackslep, isolatedtrackshad)
+
+object barrelphotons
+  take Photon
+  select abs(eta) < 1.4442 and 
+  #select Fall17v2Loose == 1
+  select HoverE < 0.04596
+  select sigmaetaeta < 0.0106
+  select chargedhadiso < 1.694
+  select neutralhadiso < 24.032 + 0.01512*pT + 0.00002259*pT^2
+  select EMiso < 2.876 + 0.004017*pT
+
+object endcapphotons
+  select abs(eta) [] 1.566 2.5 
+  select HoverE < 0.0590
+  select sigmaetaeta < 0.0272
+  select chargedhadiso < 2.089
+  select neutralhadiso < 19.722 + 0.0117*pT + 0.000023*pT^2
+  select EMiso < 4.162 + 0.0037*pT
+
+object photons
+  take union(barrelphotons, endcapphotons)
+  select npixelseeds == 0
+  select pT > 100  
+
+object Hcands
+  take bjets
+  select abs(m(bjets[-1] + bjets[-2]) - m(bjets[-3], bjets[-4])) ~= 0
+
+
+# EVENT VARIABLES
+define Hbb1 = bjets[-1] + bjets[-2]
+define Hbb2 = bjets[-3] + bjets[-4]
+define deltambb = abs(m(Hbb1) - m(Hbb2)))
+define deltaRmax = max(dR(bjets[-1], bjets[-2]), dR(bjets[-3], bjets[-4]))
+define avembb = (m(Hbb1) + m(Hbb2)) / 2
+
+# EVENT SELECTION
+
+region baseline
+  trigger MET[90..140] # syntax
+  select MET > 150
+  select n(leptons) == 0
+  select n(isolatedtracks) == 0
+  select n(photons) == 0
+  select dphi(ak4jets[0], METLV) > 0.5
+  select dphi(ak4jets[1], METLV) > 0.5
+  select n(ak4jets) > 2 ? dphi(ak4jets[2], METLV) > 0.3
+  select n(ak4jets) > 2 ? dphi(ak4jets[3], METLV) > 0.3
+
+region baselineresolved
+  baseline
+  select n(ak4jets) [] 4 5
+  select n(bjetstight) == 2
+  select deltambb ~= 0 
+  select deltambb < 40
+  select deltaRmax < 2.2
+  
+
+region baselineboosted
+  baseline
+  select MET > 300
+  select HT > 600
+  select n(ak8jets) >= 2
+
+

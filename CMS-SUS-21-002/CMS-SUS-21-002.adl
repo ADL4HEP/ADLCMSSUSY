@@ -1,0 +1,201 @@
+#info analysis
+#  title "Search for electroweak production of supersymmetric particles in final states containing hadronic decays of WW, WZ, or WH and missing transverse momentum"
+#  experiment CMS
+#  id SUS-21-002
+#  publication ...
+#  sqrtS 13.0
+#  lumi 137
+#  arXiv ...
+#  hepdata ...
+#  doi ...
+
+info adl
+  author S. Sekmen
+  status draft
+  datatier unknown
+
+# OBJECT SELECTION
+
+object ak4jets 
+  take AK4jet
+  select pT > 30
+  select abs(Eta) < 2.4
+
+object bjets
+  take ak4jets
+  select DeepCSVM > 0.6321, 0.4941, 0.4184
+
+object ak8jets 
+  take AK8jet
+  select pT > 200
+  select abs(Eta) < 2
+
+object ak8jetsm50
+  take ak8jets
+  select m > 50
+
+object ak8jetsmV
+  take ak8jets
+  select m [] 65 105
+
+object Hcands
+  take ak8jets
+  select m [] 75 140
+  select dR(ak8jets, bjets) < 0.8
+
+object Wcands
+  take ak8jets
+  select m [] 65 105
+  select dR(ak8jets, bjets) > 0.8
+
+object Htags
+  take Hcands
+  select pfMassDecorrelatedDeepBoostedDiscriminatorsJetTagsbbvsLight == 1
+
+object Hnotags
+  take Hcands
+  select pfMassDecorrelatedDeepBoostedDiscriminatorsJetTagsbbvsLight == 0
+
+object Wtags
+  take Wcands
+  select pfDeepBoostedDiscriminatorsJetTagsWvsQCD == 1
+
+object Wnotags
+  take Wcands
+  select pfDeepBoostedDiscriminatorsJetTagsWvsQCD == 0
+
+object Ws
+  take ak8jetsmV
+  select pfDeepBoostedDiscriminatorsJetTagsWvsQCD
+
+object Vs # for W/Z tagging
+  take ak8jetsmV
+  select pfMassDecorrelatedDeepBoostedDiscriminatorsJetTagsWvsQCD
+
+object electrons
+  take Electron
+  select pT > 10
+  select abs(eta) < 2.5
+  select Fall17v2CutBasedvetoID == 1
+  select miniiso < 0.1
+
+object muons
+  take Muon
+  select pT > 10
+  select abs(eta) < 2.4
+  select mediumID == 1
+  select miniiso < 0.2
+
+object leptons 
+  take union(electrons, muons)
+
+object isolatedtracks
+  take Track
+  select abs(pdgID) == 11 or abs(pdgID) == 13 ? pT > 5 : pT > 10
+  define Itk = sum(pT(other charged tracks within dR = 0.3) / pT # syntax
+  select abs(pdgID) == 11 or abs(pdgID) == 13 ? Itk < 0.2 : Itk > 0.1
+  select MT(Track, METLV) < 100
+  select dz(track, PV) - dz(track, vertices) < 0
+
+object photons
+  take Photon
+  select pT > 100
+  select abs(eta) < 1.4442 and abs(eta) [] 1.566 2.5 
+  select Fall17v2Loose == 1
+
+# EVENT VARIABLES
+define HT = sum(pT(ak4jets))
+
+# EVENT SELECTION
+
+region baseline
+  trigger MET[90..140] # syntax
+  select n(leptons) == 0
+  select n(isolatedtracks) == 0
+  select n(photons) == 0
+  select MET > 200
+  select HT > 300
+  select n(ak4jets) [] 2 6
+  select n(ak8jets) > 1
+  select n(ak8jetsm50) > 1 # syntax: can we do any(m(ak8jets)) > 50 
+  select dphi(ak4jets[0], METLV) > 1.5
+  select dphi(ak4jets[1], METLV) > 0.5
+  select n(ak4jets) > 2 ? dphi(ak4jets[2], METLV) > 0.3
+  select n(ak4jets) > 2 ? dphi(ak4jets[3], METLV) > 0.3
+  select dphi(ak8jets[0], METLV) > 1.5
+  select dphi(ak8jets[1], METLV) > 0.5  
+
+region bveto
+  baseline
+  select n(bjets) == 0
+
+region bvetoSR
+  type search
+  bveto
+  select n(Ws) >= 1
+  select n(Vs) >= 1
+  select n(Ws) + n(Vs) >= 2
+  bins MET 200 250 300 350 400 450 500 600 800 inf
+
+region bveto0tagCR
+  type control
+  bveto
+  select n(bjets) == 0
+  select n(Ws) == 0
+  select n(Vs) == 0
+  bins MET 200 250 300 350 400 450 500 600 800 inf
+
+region bveto1tagCR
+  type control
+  bveto
+  select n(bjets) == 0
+  select n(Vs) == 1
+  select n(Ws) == 0 # syntax: other W-tagged jet?
+  bins MET 200 250 300 350 400 450 500 600 800 inf
+
+region btag
+  baseline
+  select n(bjets) > 0
+  
+region btagHW
+  type search
+  btag
+  select n(Wtags) >= 1
+  select n(Htags) >= 1
+  bins MET 200 250 300 350 400 450 500 600 inf
+
+region btagW
+  type search
+  btag 
+  select n(Wtags) >= 1
+  select n(Htags) == 0
+  bins MET 200 250 300 350 400 450 500 600 800 inf
+
+region btagH
+  type search
+  btag 
+  select n(Wtags) == 0
+  select n(Htags) >= 1
+  bins MET 200 250 300 350 400 450 500 600 800 inf
+
+region btagHWantitag
+  type control
+  btag
+  select n(Wnotags) >= 1
+  select n(Hnotags) >= 1
+  bins MET 200 250 300 350 400 450 500 600 inf
+
+region btagWantitag
+  type control
+  btag 
+  select n(Wnotags) >= 1
+  select n(Hnotags) == 0
+  bins MET 200 250 300 350 400 450 500 600 800 inf
+
+region btagHantitag
+  type search
+  btag 
+  select n(Wnotags) == 0
+  select n(Hnotags) >= 1
+  bins MET 200 250 300 350 400 450 500 600 800 inf
+

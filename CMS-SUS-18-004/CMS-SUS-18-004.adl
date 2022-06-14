@@ -1,0 +1,256 @@
+info analysis
+  title "Search for supersymmetry in final states with two or three soft leptons and missing transverse momentum in proton-proton collisions at sqrt(s) = 13 TeV"
+  experiment CMS
+  id SUS-18-004
+  publication JHEP. 04 (2022) 091
+  sqrtS 13.0
+  lumi 137.1
+  arXiv 2111.06296
+  hepdata ...
+  doi 10.1007/JHEP04(2022)091
+
+info adl
+  adlauthor Changgi Huh
+  datatier Delphes
+
+# OBJECT DEFINITIONS
+object muons
+  take Muon
+  select Pt(Muon) [] 3.5 30
+  select abs(Eta(Muon)) < 2.4
+# IP3D < 0.01, sigma(IP3D) < 2.0 / IP3D < 0.0175, sigma(IP3D) < 2.5
+# IsoAbs < 5, IsoRel < 0.5 / IsoAbs < 20+300/Pt(Muon), IsoRel < 1.0
+# Deep CSV veto custom loose WP, loose ID, soft ID / loose ID, soft ID
+
+object electrons
+  take Electron
+  select Pt(Electron) [] 5 30
+  select abs(Eta(Electron)) < 2.5
+# IP3D < 0.01, sigma(IP3D) < 2.0 / IP3D < 0.0175, sigma(IP3D) < 2.5
+# dxy < 0.05, dz < 0.1
+# IsoAbs < 5, IsoRel < 0.5 / IsoAbs < 20+300/Pt(Muon), IsoRel < 1.0
+# Deep CSV veto custom loose WP,MVA ID tight WP / MVA ID custom WP
+# No missing pixel hits / No conversion vertex
+
+object leptons : Union(electrons, muons)
+
+object jets
+  take Jet
+  select Pt(Jet) > 25
+  select abs(Eta(Jet)) < 2.4
+
+object bjets
+  take jets
+  select BTag(jets) == 1
+  # medium DeepCSV WP
+
+object sfosele : COMB( electrons[-1] electrons[-2] ) alias aee
+     select q(aee) == 0
+
+object sfosmu : COMB( muons[-1] muons[-2] ) alias amumu
+     select q(amumu) == 0
+
+define sfosele = electrons[-1] electrons[-2]
+#define sfosmu = muons[-1] muons[-2]
+
+
+# EVENT VARIABLES
+
+# Variables for region 2lewkbins
+define dilepton = leptons[0] leptons[1]
+define MTl1 = sqrt( 2*Pt(leptons[0]) * MET*(1-cos( Phi(METLV[0]) - Phi(leptons[0]) )))
+define MTl2 = sqrt( 2*Pt(leptons[1]) * MET*(1-cos( Phi(METLV[0]) - Phi(leptons[1]) )))
+define HT = fHT(jets)
+# Variables for dielemuewkbins
+define dielectron = electrons[0] electrons[1]
+define dimuon = muons[0] muons[1]
+# Variables for trieleewkbins
+define trielectron1 = electrons[0] electrons[1]
+define trielectron2 = electrons[0] electrons[2]
+define trielectron3 = electrons[1] electrons[2]
+# Variables for trimuewkbins
+define trimuon1 = muons[0] muons[1]
+define trimuon2 = muons[0] muons[2]
+define trimuon3 = muons[1] muons[2]
+
+
+# EVENT SELECTION
+# Signal bins for 2 leptons EWK gaugino search
+region twolewkbins
+  select ALL
+  select Size(leptons) == 2
+  select Size(electrons) == 2 or Size(muons) == 2
+  select q(leptons[0]) * q(leptons[1]) == -1
+  select Pt(dilepton) > 3
+  select m(dilepton) [] 1 50
+  select m(dilepton) ][ 3 3.2
+  select m(dilepton) ][ 9 10.5
+  select Size(jets) >= 1
+  select Pt(METLV[0]) / HT [] 2/3 1.4
+  select Size(bjets) == 0
+  reject fMTauTau(leptons[0], leptons[1], METLV[0] ) [] 0 160
+  select MTl1 < 70 AND MTl2 < 70
+  select HT > 100
+  select Pt(METLV[0]) > 125
+  #weight trigger 0.65
+  bin MET [] 125 200 and m(dilepton) [] 4 10
+  bin MET [] 125 200 and m(dilepton) [] 10 20
+  bin MET [] 125 200 and m(dilepton) [] 20 30
+  bin MET [] 125 200 and m(dilepton) [] 30 50
+  bin MET [] 200 240 and m(dilepton) [] 1 4
+  bin MET [] 200 240 and m(dilepton) [] 4 10
+  bin MET [] 200 240 and m(dilepton) [] 10 20
+  bin MET [] 200 240 and m(dilepton) [] 20 30
+  bin MET [] 200 240 and m(dilepton) [] 30 50
+  bin MET [] 240 290 and m(dilepton) [] 1 4
+  bin MET [] 240 290 and m(dilepton) [] 4 10
+  bin MET [] 240 290 and m(dilepton) [] 10 20
+  bin MET [] 240 290 and m(dilepton) [] 20 30
+  bin MET [] 240 290 and m(dilepton) [] 30 50
+  bin MET > 290 and m(dilepton) [] 1 4
+  bin MET > 290 and m(dilepton) [] 4 10
+  bin MET > 290 and m(dilepton) [] 10 20
+  bin MET > 290 and m(dilepton) [] 20 30
+  bin MET > 290 and m(dilepton) [] 30 50
+
+# Signal bins for 2 leptons stop search
+region twolstopbins
+  select ALL
+  select Size(leptons) == 2
+  select q(leptons[0]) * q(leptons[1]) == -1
+  select Pt(dilepton) > 3
+  select m(dilepton) [] 1 50
+  select m(dilepton) ][ 9 10.5
+  select m(dilepton) ][ 3 3.2
+  select Size(jets) >= 1
+  select Pt(METLV[0]) / HT [] 2/3 1.4
+  select Size(bjets) == 0
+  reject fMTauTau(leptons[0], leptons[1], METLV[0] ) [] 0 160
+  select HT > 100 # Trigger
+  select Pt(METLV[0]) > 125
+  #weight trigger 0.65
+  bin MET [] 125 200 and Pt(leptons[0]) [] 8 12
+  bin MET [] 125 200 and Pt(leptons[0]) [] 12 16
+  bin MET [] 125 200 and Pt(leptons[0]) [] 16 20
+  bin MET [] 125 200 and Pt(leptons[0]) [] 20 25
+  bin MET [] 125 200 and Pt(leptons[0]) [] 25 30
+  bin MET [] 200 240 and Pt(leptons[0]) [] 3.5 8
+  bin MET [] 200 240 and Pt(leptons[0]) [] 8 12
+  bin MET [] 200 240 and Pt(leptons[0]) [] 12 16
+  bin MET [] 200 240 and Pt(leptons[0]) [] 16 20
+  bin MET [] 200 240 and Pt(leptons[0]) [] 20 25
+  bin MET [] 200 240 and Pt(leptons[0]) [] 25 30
+  bin MET [] 240 290 and Pt(leptons[0]) [] 3.5 8
+  bin MET [] 240 290 and Pt(leptons[0]) [] 8 12
+  bin MET [] 240 290 and Pt(leptons[0]) [] 12 16
+  bin MET [] 240 290 and Pt(leptons[0]) [] 16 20
+  bin MET [] 240 290 and Pt(leptons[0]) [] 20 25
+  bin MET [] 240 290 and Pt(leptons[0]) [] 25 30
+  bin MET [] 290 340 and Pt(leptons[0]) [] 3.5 8
+  bin MET [] 290 340 and Pt(leptons[0]) [] 8 12
+  bin MET [] 290 340 and Pt(leptons[0]) [] 12 16
+  bin MET [] 290 340 and Pt(leptons[0]) [] 16 20
+  bin MET [] 290 340 and Pt(leptons[0]) [] 20 25
+  bin MET [] 290 340 and Pt(leptons[0]) [] 25 30
+  bin MET > 340 and Pt(leptons[0]) [] 3.5 8
+  bin MET > 340 and Pt(leptons[0]) [] 12 16
+  bin MET > 340 and Pt(leptons[0]) [] 16 20
+  bin MET > 340 and Pt(leptons[0]) [] 20 25
+  bin MET > 340 and Pt(leptons[0]) [] 25 30
+
+# Signal bins for 3 leptons EWK gaugino search
+# Signal bins for 2 electrons and 1 muon EWK gaugino search
+region dielemuewkbins
+  select ALL
+  select Size(electrons) == 2 and Size(muons) == 1
+  select Size(leptons) == 3
+  select q(electrons[0]) * q(electrons[1]) == -1
+  select m(dielectron) [] 1 50
+  select m(dielectron) ][ 9 10.5
+  select Size(jets) >= 1
+  select Size(bjets) == 0
+  select HT > 100 # Trigger
+  select Pt(METLV[0]) > 125
+  #weight trigger 0.65
+  bin MET [] 125 200 and m(dielectron) [] 4 10
+  bin MET [] 125 200 and m(dielectron) [] 10 20
+  bin MET [] 125 200 and m(dielectron) [] 20 30
+  bin MET [] 125 200 and m(dielectron) [] 30 50
+  bin MET > 200 and m(dielectron) [] 1 4
+  bin MET > 200 and m(dielectron) [] 4 10
+  bin MET > 200 and m(dielectron) [] 10 20
+  bin MET > 200 and m(dielectron) [] 20 30
+  bin MET > 200 and m(dielectron) [] 30 50
+
+# Signal bins for 1 electron and 2 muons EWK gaugino search
+region eledimuewkbins
+  select ALL
+  select Size(electrons) == 1 and Size(muons) == 2
+  select Size(leptons) == 3
+  select q(muons[0]) * q(muons[1]) == -1
+  select m(dimuon) [] 1 50
+  select m(dimuon) ][ 9 10.5
+  select Size(jets) >= 1
+  select Size(bjets) == 0
+  select HT > 100 # Trigger
+  select Pt(METLV[0]) > 125
+  #weight trigger 0.65
+  bin MET [] 125 200 and m(dimuon) [] 4 10
+  bin MET [] 125 200 and m(dimuon) [] 10 20
+  bin MET [] 125 200 and m(dimuon) [] 20 30
+  bin MET [] 125 200 and m(dimuon) [] 30 50
+  bin MET > 200 and m(dimuon) [] 1 4
+  bin MET > 200 and m(dimuon) [] 4 10
+  bin MET > 200 and m(dimuon) [] 10 20
+  bin MET > 200 and m(dimuon) [] 20 30
+  bin MET > 200 and m(dimuon) [] 30 50
+
+# Signal bins for 3 electrons EWK gaugino search
+region trieleewkbins
+  select ALL
+  select Size(electrons) == 3 and Size(muons) == 0
+  select Size(leptons) == 3
+  select Size(sfosele) >= 1
+  select m(sfosele) ~= 0
+  select m(sfosele) [] 1 50
+  select m(sfosele) ][ 9 10.5
+  select m(trielectron1) < 60 and m(trielectron2) < 60 and m(trielectron3) < 60
+  select Size(jets) >= 1
+  select Size(bjets) == 0
+  select HT > 100 # Trigger
+  select Pt(METLV[0]) > 125
+  #weight trigger 0.65
+  bin MET [] 125 200 and m(sfosele) [] 4 10
+  bin MET [] 125 200 and m(sfosele) [] 10 20
+  bin MET [] 125 200 and m(sfosele) [] 20 30
+  bin MET [] 125 200 and m(sfosele) [] 30 50
+  bin MET > 200 and m(sfosele) [] 1 4
+  bin MET > 200 and m(sfosele) [] 4 10
+  bin MET > 200 and m(sfosele) [] 10 20
+  bin MET > 200 and m(sfosele) [] 20 30
+  bin MET > 200 and m(sfosele) [] 30 50
+
+# Signal bins for 3 muonss EWK gaugino search
+region trimuewkbins
+  select ALL
+  select Size(electrons) == 0 and Size(muons) == 3
+  select Size(leptons) == 3
+  select Size(sfosmu) >= 1
+  select m(sfosmu) ~= 0
+  select m(sfosmu) [] 1 50
+  select m(sfosmu) ][ 9 10.5
+  select m(trimuon1) < 60 and m(trimuon2) < 60 and m(trimuon3) < 60
+  select Size(jets) >= 1
+  select Size(bjets) == 0
+  select HT > 100 # Trigger
+  select Pt(METLV[0]) > 125
+  #weight trigger 0.65
+  bin MET [] 125 200 and m(sfosmu) [] 4 10
+  bin MET [] 125 200 and m(sfosmu) [] 10 20
+  bin MET [] 125 200 and m(sfosmu) [] 20 30
+  bin MET [] 125 200 and m(sfosmu) [] 30 50
+  bin MET > 200 and m(sfosmu) [] 1 4
+  bin MET > 200 and m(sfosmu) [] 4 10
+  bin MET > 200 and m(sfosmu) [] 10 20
+  bin MET > 200 and m(sfosmu) [] 20 30
+  bin MET > 200 and m(sfosmu) [] 30 50

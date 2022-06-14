@@ -1,0 +1,129 @@
+#info analysis
+#  title "Search for chargino-neutralino production in events with Higgs and W bosons using 137 fb−1 of proton-proton collisions at sqrts = 13 TeV"
+#  experiment CMS
+#  id SUS-20-003
+#  publication JHEP 10 (2021) 045
+#  sqrtS 13.0
+#  lumi 137
+#  arXiv 2107.12553
+#  hepdata 
+#  doi 10.1007/JHEP10(2021)045
+
+info adl
+  author S. Sekmen
+  datatier NanoAODv7
+  status draft # Signal regions written.  Some confusion in paper definitions?
+
+# OBJECT SELECTION
+
+object ak4jets 
+  take AK4jet
+  select pT > 30
+  select abs(Eta) < 2.4
+  select tightID == 1
+  select dR(AK4jet, leptonssel) > 0.4 or dR(AK4jet, leptonsveto) > 0.4
+
+object bjets
+  take ak4jets
+  select DeepCSVM > 0.6321, 0.4941, 0.4184 # pfDeepCSVJetTags
+
+object nobjets
+  take ak4jets
+  select DeepCSVM >= 0.6321, 0.4941, 0.4184 # pfDeepCSVJetTags
+
+object ak8jets 
+  take AK8jet
+  select pT > 250
+  select abs(Eta) < 2.4
+
+object boostH
+  take ak8jets
+  select DeepAK8v2massdecorrmedium == 1
+
+object electronssel
+  take Electron
+  select pT > 30
+  select abs(eta) < 1.44
+  select POGIDwithoutisoMedium == 1
+  select miniiso < 0.1
+
+object electronsveto
+  take Electron
+  select pT > 5
+  select abs(eta) < 2.4
+  select POGIDwithoutisoVeto == 1
+  select miniiso < 0.2
+
+object muonssel
+  take Muon
+  select pT > 25
+  select abs(eta) < 2.1
+  select POGIDmedium == 1
+  select miniiso < 0.1
+
+object muonsveto
+  take Muon
+  select pT > 5
+  select abs(eta) < 2.4
+  select POGIDloose == 1
+  select miniiso < 0.2
+
+object leptonssel 
+  take union(electronssel, muonssel)
+
+object leptonssveto 
+  take union(electronsveto, muonsveto)
+
+object isolatedtracks
+  #take Track
+  take pfChargedHadron
+  select opposite charge relative to the selected lepton
+  select dR(pfChargedHadron, leptonssel) > 0.4
+  select dz(pfChargedHadron, PV) < 0.1
+  select pT > 60 ? absolutetrackeriso, cone 0.3 < 6
+  select pT < 60 ? relativetrackeriso, cone 0.3 < 0.1
+
+object tausveto
+  take Tau
+  select pT > 20
+  select abs(eta) < 2.4
+  select byDecayModeFinding == 1
+  select byMediumIsolationMVArun2v1DBoldDMwLT == 1
+  select opposite charge relative to the selected lepton
+  select dz(Tau, PV) < 0.1
+
+
+# EVENT VARIABLES
+
+define MTl = Sqrt( 2*pT(leptons[0]) * MET*(1-cos(phi(METLV[0]) - phi(leptons[0]) )))
+define MCT = 2 * pT(bjets[0]) * pT(bjets[1]) * (1 + cos( dPhi( bjets[0], bjets[1] )))
+
+# EVENT SELECTION
+
+region baseline
+  select size(leptonssel) == 1
+  select size(leptonsveto) == 0
+  select size(isolatedtracks) == 0
+  select size(tausveto) == 0
+  select MET > 125
+  select size(ak4jets) [] 2 3
+  select size(bjts) == 2 # why is this a part of baseline, when we have boosted SRs?
+  select MTl > 150
+  select MCT > 200
+  
+region SRs
+  baseline
+  select m(bjets[0] + bjets[1]) [] 90 150
+  select size(ak4jets) == 3 ? pT(nobjets[0]) < 300
+
+region SRsnoboostH
+  SRs
+  select size(boostH) == 0
+  bins MET 125 200 300 400 inf
+
+region SRsboostH
+  SRs
+  select size(boostH) == 1
+  bins MET 125 300 inf
+
+

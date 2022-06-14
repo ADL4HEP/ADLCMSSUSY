@@ -1,0 +1,197 @@
+info analysis
+  title "Search for supersymmetry in proton-proton collisions at sqrt(s) = 13 TeV in final states with high-momentum Z bosons and missing transverse momentum"
+  experiment CMS
+  id SUS-19-013
+  publication JHEP 09 (2020) 149
+  sqrtS 13.0
+  lumi 137
+  arXiv 2008.04422
+  hepdata https://www.hepdata.net/record/ins1811111
+  doi 10.1007/JHEP09(2020)149
+
+info adl
+  adlauthor Sezen Sekmen
+  date 28 Mar 2020
+  datatier MiniAODv2, MiniAODv3
+
+# OBJECT SELECTION
+
+object jets
+  take AK4jets
+  select pT > 30
+  select abs(eta) < 2.4 ?
+
+object jets5
+  take AK4jets
+  select pT > 30
+  select abs(eta) < 5
+
+object Zs
+  take AK8jets # softdrop
+  select pT > 200
+  select abs(eta) < ?
+
+object bjets
+  take jets
+  # normally using DNN medium tagger
+  # eff for pT > 30 is 65%, usd misID = 1.6%, charm midID = 13%
+  select BTag == 1
+
+object vertices
+  take Vertex
+  select abs(dz) < 24 # cm
+  select abs(dxy) < 2 # cm
+
+object vetomuons
+  take Muon
+  select pT > 10
+  select abs(eta) < 2.4
+  select vetoID == 1
+  define iso = sum(pt(PF)) within dR / pT
+  # dR = 0.2 for pT < 50
+  # dR = 10 GeV / pT for pT [] 50 200
+  # dR = 0.5 for pT > 200
+  select iso < 0.1
+
+object vetoelectrons
+  take Electron
+  select pT > 10
+  select abs(eta) < 2.5
+  select cutbasedvetoID == 1
+  define iso = sum(pt(PF)) within dR / pT
+  # dR = 0.2 for pT < 50
+  # dR = 10 GeV / pT for pT [] 50 200
+  # dR = 0.5 for pT > 200
+  select iso < 0.1
+
+object isotracks
+  take Tracks
+  # how does one do this? by dR matching? Or is the information in the ntuple?
+  select matchedtoisoelectron == 0
+  select matchedtoisomuon == 0
+  define iso = sum(pT(all charged particles in dR<0.3)) / pT
+  select iselectron == 1 or ismuon == 1 ? iso < 0.2 : iso < 0.1
+  select iselectron == 1 or ismuon == 1 ? pT < 5 : pT < 10
+  select abs(eta) < 2.4
+  define MTt = sqrt( 2*pT * MET.MET*(1-cos(MET.phi - phi )))
+  select MTt < 100
+
+object photons
+  take Photon
+  select abs(eta) < 2.5
+  select vetoID == 1
+  # For isolation below, are we not dividing by E?
+  # The "..." depends on detector geometry.
+  # Details here: https://arxiv.org/abs/1502.02702
+  select sumCH = sum(E(charged hadrons in dR<0.3)) < ...
+  select sumNH = sum(E(neutral hadrons in dR<0.3)) < ...
+  select sumEM = sum(E(EM particles in dR<0.3)) < ...
+
+object muonjets
+  take AK4jets j
+  select pT > 200
+  select muonenergyfraction > 0.5
+  select dphi(j, MET) > pi - 0.4
+
+# VARIABLES
+
+define HT = sum(pT(jets))
+define MHT = -sum(jets5)
+define HT5 = sum(pT(jets5))
+
+# EVENT SELECTION
+
+region eventcleaning
+  reject neutralEMfrac(jets[0]) < 0.03
+  reject dphi(jets[0], MHT) > beta - 0.4
+  reject PFMET / CaloMET > 5
+  reject HT5 / HT < 1.2 or dphi(jets[0], MHT) >= 5.3 * (HT5 / HT) - 4.78
+  reject pT(jets[0]) > 250 or pT(jets5[0]) > 250 and (dphi(jets[0], MHT) ][ 0.1 2.6 or dphi(jets5[0], MHT) ][ 0.1 2.6)
+  # also write the cleaning for event with the HEminus problem
+
+region baseline
+  select eventcleaning
+  select MET > 300
+  select HT > 400
+  select MHT > 200
+  select size(jets) >= 1 ? dphi(jets[0], MHT) > 0.5 : ALL
+  select size(jets) >= 2 ? dphi(jets[1], MHT) > 0.5 : ALL
+  select size(jets) >= 3 ? dphi(jets[2], MHT) > 0.3 : ALL
+  select size(jets) >= 4 ? dphi(jets[3], MHT) > 0.3 : ALL
+  select size(vetoelectrons) == 0
+  select size(vetomuons) == 0
+  select size(isotracks) == 0
+
+region Zcand
+  select baseline
+  select size(Zs) >= 2
+  select m(Zs[0]) [] 40 140
+  select m(Zs[1]) [] 40 140
+  select any(dR(Zs[1], bjets)) > 0.8
+  
+region SRs
+  select Zcand
+  select m(Zs[0]) [] 70 100
+  select m(Zs[1]) [] 70 100
+  bin MET 300 450 600 800 1000 1200
+
+# CRs and other auxiliary regions
+
+# The CR used for measuring the total background integrating MET > 300
+# Reverts the mass cut for Zs_0
+region CRsignalwindowsidebands
+  select Zcand
+  select size(Zs) >= 2
+  select m(Zs[0]) ][ 70 100
+  select m(Zs[1]) [] 70 100
+
+# The CR used for predicting the MET shape
+# Measures the total fraction of the background in each MET search bin
+region CRsidebands
+  select Zcand
+  select size(Zs) >= 2
+  select m(Zs[0]) ][ 70 100
+  select m(Zs[1]) ][ 70 100
+
+# Validation regions
+
+# single photon validaton region
+region VRsinglelep
+  select eventcleaning
+  select METtrigger
+  select MET > 200
+  select HT > 400
+  select MHT > 200
+  select size(jets) >= 1 ? dphi(jets[0], MHT) > 0.5 : ALL
+  select size(jets) >= 2 ? dphi(jets[1], MHT) > 0.5 : ALL
+  select size(jets) >= 3 ? dphi(jets[2], MHT) > 0.3 : ALL
+  select size(jets) >= 4 ? dphi(jets[3], MHT) > 0.3 : ALL
+  select size(vetoelectrons) == 0
+  select size(vetomuons) == 0
+  select size(isotracks) == 0
+  select m(Zs[0]) [] 70 100
+  select m(Zs[1]) [] 70 100
+  bin MET 300 450 600 800 1000 1200
+
+region VRsinglepho
+  select eventcleaning
+  select singlephotontrigger
+  define METpho = MET + photons[0]
+  select MET > 200
+  select HT > 400
+  select MHT > 200
+  select size(jets) >= 1 ? dphi(jets[0], MHT) > 0.5 : ALL
+  select size(jets) >= 2 ? dphi(jets[1], MHT) > 0.5 : ALL
+  select size(jets) >= 3 ? dphi(jets[2], MHT) > 0.3 : ALL
+  select size(jets) >= 4 ? dphi(jets[3], MHT) > 0.3 : ALL
+  select size(vetoelectrons) == 0
+  select size(vetomuons) == 0
+  select size(isotracks) == 0
+
+# Region for getting trigger efficiencies
+region singleeletrigeff
+  select MHT < 100
+  select size(mediumWPelectrons) == 2
+  select m(e_0 + e_1) [] 70 110
+  select pT(e_0 + e_1) > 200
+

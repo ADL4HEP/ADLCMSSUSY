@@ -1,0 +1,372 @@
+
+# OBJECTS
+
+object electrons
+  take electron
+  select ...
+
+object muons
+  take muon
+  select ...
+
+object leptons
+  take union(electrons, muons)
+
+object jets
+  take ak4jets
+  select ...
+
+object bjets
+  take ak4jets
+  select ...
+
+object DTspresel
+  take tracks
+  select pt > 15
+  select abs(eta) < 2
+  select reliso < 0.2
+  reject dR(track, PFcand) < 0.01
+  reject dR(track, lepton) < 0.1
+  reject dR(track, pion) < 0.1
+  reject dR(track, jet25) < 0.4
+  select highqualitytag == 1
+  select dpt / ptsq < 10 # GeV^-1
+  select dzPV < 0.1 # cm
+  select nmissinginnerhits == 0
+  select nlayerswithmeasurement >= 2
+  select nvalidtrackerhits >= 2
+  select nvalidpixelhits >= 2
+
+object DTlpresel
+  take tracks
+  select pt > 40
+  select abs(eta) < 2
+  select reliso < 0.2
+  reject dR(track, PFcand) < 0.01
+  reject dR(track, lepton) < 0.1
+  reject dR(track, pion) < 0.1
+  reject dR(track, jet25) < 0.4
+  select highqualitytag == 1
+  select dpt / ptsq < 10 # GeV^-1
+  select dzPV < 0.1 # cm
+  select nmissinginnerhits == 0
+  select nmissingouterhits >= 2
+  select nlayerswithmeasurement >= 2
+  select nvalidtrackerhits >= 2
+  select nvalidpixelhits >= 2
+
+object DTsh
+  select DTspresel
+  select Edep < 15
+  select phase0 ? BDT > 0.1 : BDT > 0.12
+
+object DTlg
+  select DTlpresel
+  select Edep / p < 0.15
+  select phase0 ? BDT > 0.1 : BDT > 0.15
+
+object DT
+  take union(DTsh, DTlg)
+
+object DTpromptSBsh
+  take DTspresel
+  select phase0 ? Edep [] 20 50 : Edep [] 20 40
+  select phase0 ? BDT > -0.4 : BDT > -0.5
+  select dphi(DTspresel, MHT) < pi / 3
+
+object DTpromptSBlg
+  take DTlpresel
+  select phase0 ? Edep / p [] 0.45*p 0.95*p : Edep / p [] 0.2*p 0.5*p
+  select phase0 ? BDT > -0.2 : BDT > -0.2
+  select dphi(DTspresel, MHT) < pi / 3
+
+object DTpromptSB
+  take union(DTprmoptSBsh, DTpromptSBlg)
+
+object DTfakeSBsh
+  take DTspresel
+  select Edep < 5
+  select phase0 ? BDT [] -0.1 0.1 : -0.3 0.12
+  select dphi(DTspresel, MHT) > pi / 2
+
+object DTfakeSBlg
+  take DTlpresel
+  select Edep / p < 0.05
+  select phase0 ? BDT [] -0.3 0.1 : -0.3 0.15
+  select dphi(DTspresel, MHT) > pi / 2
+
+object DTfakeSB
+  take union(DTprmoptSBsh, DTpromptSBlg)
+
+
+# EVENT VARIABLES
+define hardmht = sum(jets pT > 30, eta < 5)
+define HT = sum(jets pT > 30, eta < 2.4)
+define mTele =
+define mTmu =
+
+# EVENT SELECTION
+
+# Baseline selections
+region baselinehad
+  select size(DTs) >= 1
+  select mht > 150
+  select HT > mht
+  select size(jets) >= 1
+  select size(electrons) == 0
+  select size(muons) == 0
+  select hltmht == 1
+
+region baselineele
+  select size(DTs) >= 1
+  select mht > 30
+  select size(electrons) == 1 # shouldn't this be >= 1 ?
+  select size(muons) >= 0
+  select size(jets) >= 1
+  select mTele > 110
+  select m(DT, electrons[0]) > 120
+  select hltsingleele == 1
+
+region baselinemu
+  select size(DTs) >= 1
+  select mht > 30
+  select size(muons) >= 1
+  select size(electrons) == 0
+  select size(jets) >= 1
+  select mTmu > 110
+  select m(DT, muons[0]) > 120
+  select hltsinglemu == 1
+
+# Signal regions
+region sighad
+  select baselinehad
+  # mht [] 150 300, 0 bjets
+  namedbin 1 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 2 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 3 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 4 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  namedbin 5 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 6 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 7 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 8 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  # mht [] 150 300, >=1 bjets
+  namedbin 9 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 10 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 11 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 12 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  namedbin 13 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 14 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 15 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 16 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  # mht > 300
+  namedbin 17 mht > 300 and n(jets) [] 1 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 18 mht > 300 and n(jets) [] 1 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 19 mht > 300 and n(jets) [] 1 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 20 mht > 300 and n(jets) [] 1 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  namedbin 21 mht > 300 and n(jets) >= 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 22 mht > 300 and n(jets) >= 3 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 23 mht > 300 and n(jets) >= 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 24 mht > 300 and n(jets) >= 3 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+
+region sigele
+  select baselineele
+  # mht [] 30 150 0 b-jets
+  namedbin 25 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 26 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 27 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 28 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  # mht [] 30 150 >=1 b-jets
+  namedbin 29 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 30 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 31 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 32 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  # mht > 150
+  namedbin 33 mht > 150 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 34 mht > 150 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 35 mht > 150 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 36 mht > 150 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+
+region sigmu
+  select baselinemu
+  # mht [] 30 150 0 b-jets
+  namedbin 37 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 38 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 39 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 40 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  # mht [] 30 150 >=1 b-jets
+  namedbin 41 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 42 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 43 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 44 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+  # mht > 150
+  namedbin 45 mht > 150 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx <= 4
+  namedbin 46 mht > 150 and n(jets) >= 1 and n(DTsh) == 0 and n(DTlg) == 1 and dedx > 4
+  namedbin 47 mht > 150 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx <= 4
+  namedbin 48 mht > 150 and n(jets) >= 1 and n(DTsh) == 1 and n(DTlg) == 0 and dedx > 4
+
+region sig2dt
+  select baselinehad or baselineele or baselinemu
+  select n(DTsh) + n(DTlg) >= 2
+
+# Prompt BG estimation control regions
+region caloSBhad
+  select baselinehad
+  # mht [] 150 300, 0 bjets
+  namedbin 1 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 2 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 3 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 4 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  namedbin 5 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 6 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 7 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 8 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  # mht [] 150 300, >=1 bjets
+  namedbin 9 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 10 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 11 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 12 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  namedbin 13 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 14 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 15 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 16 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  # mht > 300
+  namedbin 17 mht > 300 and n(jets) [] 1 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 18 mht > 300 and n(jets) [] 1 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 19 mht > 300 and n(jets) [] 1 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 20 mht > 300 and n(jets) [] 1 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  namedbin 21 mht > 300 and n(jets) >= 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 22 mht > 300 and n(jets) >= 3 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 23 mht > 300 and n(jets) >= 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 24 mht > 300 and n(jets) >= 3 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+
+region caloSBele
+  select baselineele
+  # mht [] 30 150 0 b-jets
+  namedbin 25 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 26 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 27 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 28 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  # mht [] 30 150 >=1 b-jets
+  namedbin 29 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 30 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 31 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 32 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  # mht > 150
+  namedbin 33 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 34 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 35 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 36 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+
+region caloSBmu
+  select baselinemu
+  # mht [] 30 150 0 b-jets
+  namedbin 37 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 38 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 39 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 40 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  # mht [] 30 150 >=1 b-jets
+  namedbin 41 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 42 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 43 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 44 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+  # mht > 150
+  namedbin 45 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx <= 4
+  namedbin 46 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 0 and n(DTpromptSBlg) == 1 and dedx > 4
+  namedbin 47 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx <= 4
+  namedbin 48 mht > 150 and n(jets) >= 1 and n(DTpromptSBsh) == 1 and n(DTpromptSBlg) == 0 and dedx > 4
+
+region eplusDTpromptsig
+  select n(electrons) == 1
+  select n(DT) == 1
+  select m(electrons[0], DT[0]) [] 65 110
+  histo vs DTsh pT
+  histo vs DTlg pT
+  # this is separated into low mT CR and high-mT onZ test?  What is the mT threshold?
+
+region eplusDTpromptSB 
+# kappa measurement region
+  select n(electrons) == 1
+  select n(DTedepSB) == 1
+  select m(electrons[0], DTpromptSB[0]) [] 65 110
+  histo vs DTsh pT
+  histo vs DTlg pT
+
+# The region for 2DT is not clear.
+
+
+# Fake background control regions
+region caloSBhad
+  select baselinehad
+  # mht [] 150 300, 0 bjets
+  namedbin 1 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 2 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 3 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 4 mht [] 150 300 and n(bjets) == 0 and n(jets) [] 1 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  namedbin 5 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 6 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 7 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 8 mht [] 150 300 and n(bjets) == 0 and n(jets) >= 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  # mht [] 150 300, >=1 bjets
+  namedbin 9 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 10 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 11 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 12 mht [] 150 300 and n(bjets) >= 1 and n(jets) [] 1 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  namedbin 13 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 14 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 15 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 16 mht [] 150 300 and n(bjets) >= 1 and n(jets) >= 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  # mht > 300
+  namedbin 17 mht > 300 and n(jets) [] 1 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 18 mht > 300 and n(jets) [] 1 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 19 mht > 300 and n(jets) [] 1 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 20 mht > 300 and n(jets) [] 1 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  namedbin 21 mht > 300 and n(jets) >= 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 22 mht > 300 and n(jets) >= 3 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 23 mht > 300 and n(jets) >= 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 24 mht > 300 and n(jets) >= 3 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+
+region caloSBele
+  select baselineele
+  # mht [] 30 150 0 b-jets
+  namedbin 25 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 26 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 27 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 28 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  # mht [] 30 150 >=1 b-jets
+  namedbin 29 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 30 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 31 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 32 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  # mht > 150
+  namedbin 33 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 34 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 35 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 36 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+
+region caloSBmu
+  select baselinemu
+  # mht [] 30 150 0 b-jets
+  namedbin 37 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 38 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 39 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 40 mht [] 30 150 and n(bjets) == 0 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  # mht [] 30 150 >=1 b-jets
+  namedbin 41 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 42 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 43 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 44 mht [] 30 150 and n(bjets) >= 1 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+  # mht > 150
+  namedbin 45 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx <= 4
+  namedbin 46 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 0 and n(DTfakeSBlg) == 1 and dedx > 4
+  namedbin 47 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx <= 4
+  namedbin 48 mht > 150 and n(jets) >= 1 and n(DTfakeSBsh) == 1 and n(DTfakeSBlg) == 0 and dedx > 4
+
+region QCDDTfakeCR
+# theta measurement CR
+  select which trigger ?
+  select mht < 50
+  select n(leptons) == 0
+
+# fake CR for closure tests?
+
+

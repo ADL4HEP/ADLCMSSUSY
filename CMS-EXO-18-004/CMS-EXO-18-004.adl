@@ -1,0 +1,67 @@
+info analysis
+  title " Search for excited leptons in the llgamma final states in proton-proton collisions at sqerts = 13 TeV"
+  experiment CMS
+  id EXO-18-004
+  publication JHEP 04 (2019) 015
+  sqrtS 13.0
+  lumi 35.9
+  arXiv 1811.03052
+  hepdata ...
+  doi 10.1007/JHEP04(2019)015
+
+info adl
+  author S. Sekmen
+
+externalparameters
+  msignal
+
+# OBJECT SELECTION
+
+object electrons
+  take Electron
+  select pT > 35
+  select abs(eta) < 2.5
+  reject abs(eta) [] 1.44 1.56
+  select IDcutbasedloose == 1
+
+object muons
+  take Muon
+  select pT > 35
+  select abs(eta) < 2.4
+  select IDhighptmuon == 1
+  select trackiso / pt < 0.1
+
+object leptons
+  take Union(electrons, muons)
+
+object photons
+  take Photon
+  select pT > 35
+  select abs(eta) < 2.5
+  reject abs(eta) [] 1.44 1.56
+  select MVA90 > 0.2  
+
+# EVENT VARIABLES
+define mlgmin = min(m(leptons[0:1] + photons[0]))
+define mlgmax = max(m(leptons[0:1] + photons[0]))
+define mplus, mminus = Lcutvals(msignal)
+
+# EVENT SELECTION
+
+region preselection
+  select size(electrons) == 2 or size(muons) == 2
+  select size(photons) == 1
+  select dR(photons[0], leptons[0]) > 0.7
+  select dR(photons[0], leptons[1]) > 0.7
+  select m(leptons[0] + leptons[1]) > 116
+  select L(mlgammin, mlgammax, )
+  select Lcut(msignal, mlgammin, mlgammax) == 1
+  select mlgmin < mplus and mlgmax > mminus and not (mlgmin < mminus and mlgmax > mplus) == 1
+
+#function Lcut(m, x, y)
+#  value x < mplus and y > mminus and not (x < mminus and y > mplus)
+
+table Lcutvals
+  msignal mplus  mminus  
+  500     450    550
+
